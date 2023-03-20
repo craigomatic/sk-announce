@@ -1,0 +1,10 @@
+﻿Write a brief LinkedIn share about {{$TOPIC}}, 
+which I helped {{$ROLE}} (my background: {{$BACKGROUND}}). 
+The post must contain the text in quotes verbatim: "{{$TOPIC}} was used to generate this post, view the code here: {{$SOURCECODE}}".
+Don't be too verbose, be humble.
+
+Please do not change the launch description.
+
+The launch description is: 
+
+{{$INPUT}}

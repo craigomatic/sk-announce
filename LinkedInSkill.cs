@@ -95,8 +95,8 @@ internal class LinkedInSkill
 
     [SKFunction("Posts an article to LinkedIn")]
     [SKFunctionName("PostArticle")]
-    [SKFunctionContextParameter(Name = Parameters.AuthToken, Description = "The authToken of the user to get the profile for")]
-    [SKFunctionContextParameter(Name = Parameters.ImagePath, Description = "The path of the image to upload")]
+    [SKFunctionContextParameter(Name = Parameters.AuthToken, Description = "The authToken of the user to get the profile for")]    
+    [SKFunctionContextParameter(Name = Parameters.ArticleUri, Description = "The URI of the article")]
     [SKFunctionContextParameter(Name = Parameters.PersonURN, Description = "The unique person identifier to associate with the image")]
     public async Task PostArticle(string source, SKContext context)
     {
@@ -139,6 +139,63 @@ internal class LinkedInSkill
                             {
                                 status= "READY",
                                 originalUrl= articleUri
+                            }
+                        }
+                    }
+                },
+                visibility = new PublicNetworkVisibility()
+            };
+
+            var jsonString = JsonSerializer.Serialize(json);
+
+            var response = await httpClient.PostAsync("https://api.linkedin.com/v2/ugcPosts", new StringContent(jsonString));
+            response.EnsureSuccessStatusCode();
+        }
+    }
+
+    [SKFunction("Posts content to LinkedIn")]
+    [SKFunctionName("PostContent")]
+    [SKFunctionContextParameter(Name = Parameters.AuthToken, Description = "The authToken of the user to get the profile for")]
+    [SKFunctionContextParameter(Name = Parameters.ImageAsset, Description = "The image asset id that should be included in the post")]
+    [SKFunctionContextParameter(Name = Parameters.PersonURN, Description = "The unique person identifier to associate with the image")]
+    public async Task PostContent(string source, SKContext context)
+    {
+        using (var httpClient = new HttpClient())
+        {
+            if (!context.Variables.Get(Parameters.AuthToken, out string authToken) || string.IsNullOrEmpty(authToken))
+            {
+                throw new Exception("Missing auth token");
+            }
+
+            if (!context.Variables.Get(Parameters.PersonURN, out string personUrn) || string.IsNullOrEmpty(personUrn))
+            {
+                throw new Exception("Missing person URN");
+            }
+
+            context.Variables.Get(Parameters.ImageAsset, out string imageAssetId);
+
+            httpClient.DefaultRequestHeaders.Add("authorization", $"Bearer {authToken}");
+            httpClient.DefaultRequestHeaders.Add("X-Restli-Protocol-Version", "2.0.0");
+
+            dynamic json = new
+            {
+                author = $"urn:li:person:{personUrn}",
+                lifecycleState = "PUBLISHED",
+                specificContent = new SpecificContent
+                {
+                    ShareContent = new
+                    {
+                        shareCommentary = new
+                        {
+                            text = source
+                        },
+                        shareMediaCategory = imageAssetId == string.Empty ? "NONE" : "IMAGE",
+                        media = new[]
+                        {
+                            new
+                            {
+                                status= "READY",
+                                media = imageAssetId
                             }
                         }
                     }

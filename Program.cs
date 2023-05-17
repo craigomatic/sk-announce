@@ -1,5 +1,4 @@
 ﻿using Microsoft.SemanticKernel;
-using Microsoft.SemanticKernel.KernelExtensions;
 using Microsoft.SemanticKernel.Orchestration;
 using System.Reflection;
 
@@ -13,7 +12,7 @@ var endpoint = "";
 var model = "";
 
 
-var sk = Kernel.Builder.Configure(c => c.AddAzureOpenAICompletionBackend(model, model, endpoint, key)).Build();
+var sk = Kernel.Builder.Configure(c => c.AddAzureChatCompletionService(model, endpoint, key, true)).Build();
 sk.ImportSkill(new LinkedInSkill(), "LI");
 sk.CreateSemanticFunction(Assembly.GetEntryAssembly().LoadEmbeddedResource("sk_announce.skprompt.txt"), 
     "CreateAnnouncement", 
@@ -23,7 +22,7 @@ sk.CreateSemanticFunction(Assembly.GetEntryAssembly().LoadEmbeddedResource("sk_a
 //get the LinkedIn PersonUPN
 var contextVariables = new ContextVariables();
 contextVariables.Set(LinkedInSkill.Parameters.AuthToken, authToken);
-var personUpnResult = await sk.RunAsync(contextVariables, sk.Skills.GetNativeFunction("LI", "GetPersonUpn"));
+var personUpnResult = await sk.RunAsync(contextVariables, sk.Skills.GetFunction("LI", "GetPersonUpn"));
 var personUpn = personUpnResult.Result;
 
 var announcementUri = "https://devblogs.microsoft.com/semantic-kernel";
@@ -41,13 +40,32 @@ contextVariables.Set("ROLE", myRole);
 contextVariables.Set("BACKGROUND", myProfile);
 contextVariables.Set("SOURCECODE", githubRepo);
 
-var announcementResult = await sk.RunAsync(contextVariables, sk.Skills.GetSemanticFunction("Announcer", "CreateAnnouncement"));
+var announcementResult = await sk.RunAsync(contextVariables, sk.Skills.GetFunction("Announcer", "CreateAnnouncement"));
 var announcementText = announcementResult.Result;
 
-//write the LI post which has the reference to the image included
-contextVariables = new ContextVariables(announcementText);
+//post the article with commentary
+contextVariables = new ContextVariables();
 contextVariables.Set(LinkedInSkill.Parameters.AuthToken, authToken);
 contextVariables.Set(LinkedInSkill.Parameters.PersonURN, personUpn);
 contextVariables.Set(LinkedInSkill.Parameters.ArticleUri, announcementUri);
 
-await sk.RunAsync(contextVariables, sk.Skills.GetNativeFunction("LI", "PostArticle"));
+await sk.RunAsync(contextVariables, sk.Skills.GetFunction("LI", "PostArticle"));
+
+
+//below is an example of creating content (text + image) and posting it to LI
+
+//var imagePath = "";
+
+//contextVariables = new ContextVariables();
+//contextVariables.Set(LinkedInSkill.Parameters.AuthToken, authToken);
+//contextVariables.Set(LinkedInSkill.Parameters.PersonURN, personUpn);
+//contextVariables.Set(LinkedInSkill.Parameters.ImagePath, imagePath);
+//var uploadImageResult = await sk.RunAsync(contextVariables, sk.Skills.GetFunction("LI", "UploadImage"));
+
+////write the LI post which has the reference to the image included
+//contextVariables = new ContextVariables("<text for the post goes here>");
+//contextVariables.Set(LinkedInSkill.Parameters.AuthToken, authToken);
+//contextVariables.Set(LinkedInSkill.Parameters.PersonURN, personUpn);
+//contextVariables.Set(LinkedInSkill.Parameters.ImageAsset, uploadImageResult.Result); //the image asset is optional, if it's not included it will just be text
+
+//await sk.RunAsync(contextVariables, sk.Skills.GetFunction("LI", "PostContent"));
